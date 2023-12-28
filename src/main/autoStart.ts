@@ -10,9 +10,12 @@ import { join } from "path";
 
 interface AutoStart {
     isEnabled(): boolean;
+    wasAutoStarted(): boolean;
     enable(): void;
     disable(): void;
 }
+
+const isFlatpak = process.env.FLATPAK_ID !== undefined;
 
 function makeAutoStartLinux(): AutoStart {
     const configDir = process.env.XDG_CONFIG_HOME || join(process.env.HOME!, ".config");
@@ -20,28 +23,38 @@ function makeAutoStartLinux(): AutoStart {
     const file = join(dir, "vencord.desktop");
 
     return {
-        isEnabled: () => existsSync(file),
+        isEnabled: () => existsSync(file), // TODO: flatpak
+        wasAutoStarted: () => process.argv.includes("--autostart"),
         enable() {
-            const desktopFile = `
+            if (isFlatpak) {
+            } else {
+                const desktopFile = `
 [Desktop Entry]
 Type=Application
 Version=1.0
 Name=Vencord
 Comment=Vencord autostart script
-Exec=${process.execPath}
+Exec=${process.execPath} --autostart
 Terminal=false
 StartupNotify=false
 `.trim();
 
-            mkdirSync(dir, { recursive: true });
-            writeFileSync(file, desktopFile);
+                mkdirSync(dir, { recursive: true });
+                writeFileSync(file, desktopFile);
+            }
         },
-        disable: () => rmSync(file, { force: true })
+        disable: () => {
+            if (isFlatpak) {
+            } else {
+                rmSync(file, { force: true });
+            }
+        }
     };
 }
 
 const autoStartWindowsMac: AutoStart = {
     isEnabled: () => app.getLoginItemSettings().openAtLogin,
+    wasAutoStarted: () => app.getLoginItemSettings().wasOpenedAtLogin,
     enable: () => app.setLoginItemSettings({ openAtLogin: true }),
     disable: () => app.setLoginItemSettings({ openAtLogin: false })
 };
