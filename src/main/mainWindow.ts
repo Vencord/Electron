@@ -379,7 +379,8 @@ function createMainWindow() {
             contextIsolation: true,
             devTools: true,
             preload: join(__dirname, "preload.js"),
-            spellcheck: true
+            spellcheck: true,
+            ...(Settings.store.middleClickAutoscroll && {enableBlinkFeatures: 'MiddleClickAutoscroll'}) 
         },
         icon: ICON_PATH,
         frame: !noFrame,
