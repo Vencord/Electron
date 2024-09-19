@@ -74,7 +74,7 @@
         ],
         "beforePack": "scripts/build/sandboxFix.js",
         "linux": {
-            "icon": "build/icon.icns",
+            "icon": "build/icon.svg",
             "category": "Network",
             "maintainer": "vendicated+vesktop@riseup.net",
             "target": [
@@ -160,6 +160,7 @@
             "oneClick": false
         },
         "win": {
+            "icon": "build/icon.ico",
             "target": [
                 {
                     "target": "nsis",
@@ -181,9 +182,9 @@
             "provider": "github"
         },
         "rpm": {
-              "fpm": [
+            "fpm": [
                 "--rpm-rpmbuild-define=_build_id_links none"
-              ]
+            ]
         }
     },
     "pnpm": {
@@ -192,4 +193,3 @@
         }
     }
 }
-
