@@ -24,7 +24,7 @@
         "updateMeta": "tsx scripts/utils/updateMeta.mts"
     },
     "dependencies": {
-        "arrpc": "github:OpenAsar/arrpc#b6dd0069399c3f6e048c9794be0e4898a25aa6f7",
+        "arrpc": "github:OpenAsar/arrpc#2234e9c9111f4c42ebcc3aa6a2215bfd979eef77",
         "electron-updater": "^6.3.9"
     },
     "optionalDependencies": {
