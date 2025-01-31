@@ -5,15 +5,83 @@
  */
 
 import { desktopCapturer, session, Streams } from "electron";
+import { execSync } from "child_process";
+import * as path from "path";
+
 import type { StreamPick } from "renderer/components/ScreenSharePicker";
 import { IpcEvents } from "shared/IpcEvents";
-
 import { handle } from "./utils/ipcWrappers";
+
+interface AudioRoutingConfig {
+    virtualDeviceId?: string;
+    excludedProcesses?: string[];
+}
+
+class AudioRouter {
+    private config: AudioRoutingConfig = {
+        excludedProcesses: ["vesktop.exe", "electron.exe"]
+    };
+
+    private getVirtualAudioDevices(): string[] {
+        try {
+            switch (process.platform) {
+                case "win32":
+                    // PowerShell command to list virtual audio devices
+                    const devices = execSync(
+                        "powershell \"Get-AudioDevice -List | Where-Object {$_.Type -eq 'Playback'}\""
+                    )
+                        .toString()
+                        .split("\n")
+                        .filter(line => line.includes("Virtual Cable"));
+                    return devices;
+
+                case "darwin":
+                    // macOS virtual audio device detection (placeholder)
+                    return [];
+
+                case "linux":
+                    // Linux virtual audio device detection (placeholder)
+                    return [];
+
+                default:
+                    return [];
+            }
+        } catch (error) {
+            console.error("Audio device detection failed", error);
+            return [];
+        }
+    }
+
+    configureAudioRouting(source: any, choice: StreamPick): Streams | null {
+        if (process.platform !== "win32" || !choice.audio) return null;
+
+        const virtualDevices = this.getVirtualAudioDevices();
+        if (virtualDevices.length === 0) return null;
+
+        try {
+            return {
+                video: source,
+                audio: "loopback",
+                audioConstraints: {
+                    mandatory: {
+                        sourceId: virtualDevices[0],
+                        excludedProcesses: this.config.excludedProcesses
+                    }
+                }
+            };
+        } catch (error) {
+            console.error("Audio routing configuration failed", error);
+            return null;
+        }
+    }
+}
 
 const isWayland =
     process.platform === "linux" && (process.env.XDG_SESSION_TYPE === "wayland" || !!process.env.WAYLAND_DISPLAY);
 
 export function registerScreenShareHandler() {
+    const audioRouter = new AudioRouter();
+
     handle(IpcEvents.CAPTURER_GET_LARGE_THUMBNAIL, async (_, id: string) => {
         const sources = await desktopCapturer.getSources({
             types: ["window", "screen"],
@@ -56,7 +124,6 @@ export function registerScreenShareHandler() {
                     .catch(() => null);
                 if (stream === null) return callback({});
             }
-
             callback(video ? { video: sources[0] } : {});
             return;
         }
@@ -74,11 +141,10 @@ export function registerScreenShareHandler() {
         const source = sources.find(s => s.id === choice.id);
         if (!source) return callback({});
 
-        const streams: Streams = {
-            video: source
-        };
-        if (choice.audio && process.platform === "win32") streams.audio = "loopback";
+        // Configure audio routing for Windows
+        const audioConfig = audioRouter.configureAudioRouting(source, choice);
 
-        callback(streams);
+        // Fallback to default video stream if audio routing fails
+        callback(audioConfig || { video: source });
     });
 }
